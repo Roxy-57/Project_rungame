@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUN TIME Game</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameOver = false;
+        let score = 0;
+
+        // 이미지 로드
+        const playerImage = new Image();
+        playerImage.src = 'chipmunk.png'; 
+        const obstacleImage = new Image();
+        obstacleImage.src = 'BOX.png'; 
+
+        const playerOriginal = { x: 50, y: 300, width: 50, height: 50 };
+        let player = { ...playerOriginal, dy: 0, gravity: 0.6, jumpPower: -15, grounded: true };
+
+        let bgX = 0;
+        let bgSpeed = 2;
+        let obstacles = [];
+
+        const backgroundImage = new Image();
+        backgroundImage.src = 'BackGround.png'; 
+
+        // 캔버스 크기
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // 플레이어 크기 및 위치
+            player.width = canvas.width * (playerOriginal.width / 800);
+            player.height = canvas.height * (playerOriginal.height / 400);
+            player.x = 50;
+            player.y = canvas.height - player.height - 10;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space' && player.grounded) {
+                player.dy = player.jumpPower;
+                player.grounded = false;
+            }
+        });
+
+        function updatePlayer() {
+            player.dy += player.gravity;
+            player.y += player.dy;
+
+            if (player.y + player.height > canvas.height) {
+                player.y = canvas.height - player.height;
+                player.dy = 0;
+                player.grounded = true;
+            }
+        }
+
+        // 장애물 생성 및 이동
+        function createObstacle() {
+            const maxJumpHeight = Math.abs(player.jumpPower) * 2 / player.gravity;  // 최대 점프 높이 계산
+            const maxSize = Math.min(maxJumpHeight - 20, canvas.height / 2.5);  // 장애물 최대 높이 제한
+            const minSize = canvas.height / 8;  // 장애물 최소크기 
+
+            const obstacleHeight = Math.random() * (maxSize - minSize) + minSize;
+            const obstacleWidth = obstacleHeight * 1.5;  // 장애물 너비
+
+            obstacles.push({
+                x: canvas.width,
+                y: canvas.height - obstacleHeight,
+                width: obstacleWidth,
+                height: obstacleHeight
+            });
+        }
+
+        function updateObstacles() {
+            obstacles.forEach(obstacle => {
+                obstacle.x -= 6 * (canvas.width / 800);
+            });
+
+            obstacles = obstacles.filter(obstacle => obstacle.x + obstacle.width > 0);
+        }
+
+        setInterval(createObstacle, 2000);
+
+        function detectCollision(player, obstacle) {
+            return (
+                player.x < obstacle.x + obstacle.width &&
+                player.x + player.width > obstacle.x &&
+                player.y < obstacle.y + obstacle.height &&
+                player.y + player.height > obstacle.y
+            );
+        }
+
+        function checkCollisions() {
+            obstacles.forEach(obstacle => {
+                if (detectCollision(player, obstacle)) {
+                    gameOver = true;
+                }
+            });
+        }
+
+        // 배경 그리기 및 스크롤 처리
+        function drawBackGround() {
+            ctx.drawImage(backgroundImage, bgX, 0, canvas.width, canvas.height);
+            ctx.drawImage(backgroundImage, bgX + canvas.width, 0, canvas.width, canvas.height);
+
+            bgX -= bgSpeed;
+            if (bgX <= -canvas.width) {
+                bgX = 0;
+            }
+        }
+
+        function gameLoop() {
+            if (gameOver) {
+                alert('Game Over! Your Score: ' + score);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawBackGround();
+            updatePlayer();
+            updateObstacles();
+            checkCollisions();
+
+            // 플레이어 
+            ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
+
+            // 장애물 
+            obstacles.forEach(obstacle => {
+                ctx.drawImage(obstacleImage, obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+
+         
+            score += 1;
+            ctx.fillStyle = 'black';
+            ctx.font = '20px Arial';
+            ctx.fillText('Score: ' + score, 10, 20);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        backgroundImage.onload = function() {
+            gameLoop();
+        }
+    </script>
+</body>
+</html>
